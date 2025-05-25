@@ -1,0 +1,11 @@
+origen,destino,resistencia,capacidad,longitud
+subestacion_1,subestacion_2,0.05,500,10
+subestacion_1,consumo_1,0.12,300,5
+subestacion_1,consumo_2,0.15,350,8
+subestacion_2,consumo_3,0.18,400,12
+subestacion_2,consumo_4,0.10,450,6
+consumo_1,consumo_2,0.20,250,4
+consumo_2,consumo_3,0.22,300,7
+consumo_3,consumo_5,0.25,350,9
+consumo_4,consumo_5,0.15,300,5
+consumo_5,subestacion_1,0.08,400,11

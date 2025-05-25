@@ -1,0 +1,8 @@
+id,tipo,demanda
+subestacion_1,subestacion,0
+subestacion_2,subestacion,0
+consumo_1,consumo,150
+consumo_2,consumo,200
+consumo_3,consumo,180
+consumo_4,consumo,220
+consumo_5,consumo,190
