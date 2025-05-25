@@ -1,54 +1,47 @@
-# Grafos
+# OptimizadorRedElectrica
 
-Este proyecto es una implementación de algoritmos y estructuras de datos para grafos en Python. Permite crear, manipular y analizar grafos dirigidos y no dirigidos, así como ejecutar algoritmos clásicos.
-
-## Características
-
-- Representación de grafos mediante listas de adyacencia.
-- Soporte para grafos dirigidos y no dirigidos.
-- Implementación de algoritmos de búsqueda (BFS, DFS).
-- Algoritmo de Dijkstra para caminos más cortos.
-- Detección de ciclos y componentes conexas.
-
-## Instalación
-
-Clona el repositorio:
-
-```bash
-git clone https://github.com/tu-usuario/Grafos.git
-cd Grafos
-```
-
-Instala las dependencias si es necesario:
-
-```bash
-pip install -r requirements.txt
-```
+Este script permite cargar, visualizar y optimizar una red eléctrica modelada como un grafo. Utiliza algoritmos clásicos de teoría de grafos para analizar y mejorar la red.
 
 ## Uso
 
-Ejecuta los scripts principales según el algoritmo que desees probar:
+Ejecuta el script principal para cargar los datos de ejemplo, visualizar la red, calcular el árbol de expansión mínima, el flujo de costo mínimo y analizar la conectividad:
 
 ```bash
-python main.py
+python OptimizadorRedElectrica.py
 ```
 
-Modifica los archivos de ejemplo para probar diferentes grafos y algoritmos.
+## Funcionalidades
 
-## Estructura del proyecto
+- Carga nodos y aristas desde archivos CSV.
+- Visualiza la red eléctrica.
+- Calcula el árbol de expansión mínima (MST).
+- Calcula el flujo de costo mínimo entre una subestación y un punto de consumo.
+- Analiza la conectividad y robustez de la red.
+- Exporta el grafo a formato GEXF para Gephi.
 
+## Requisitos
+
+- Python 3.x
+- networkx
+- matplotlib
+- pandas
+- numpy
+
+Instala las dependencias con:
+
+```bash
+pip install networkx matplotlib pandas numpy
 ```
-Grafo/
-├── grafo.py
-├── algoritmos/
-│   ├── bfs.py
-│   ├── dfs.py
-│   └── dijkstra.py
-├── ejemplos/
-│   └── ejemplo_grafo.py
-└── main.py
-```
 
-## Contribuciones
+## Archivos de ejemplo
 
-¡Las contribuciones son bienvenidas! Abre un issue o haz un pull request.
+- `nodos_ejemplo.csv`: Nodos de la red (subestaciones y consumos).
+- `aristas_ejemplo.csv`: Aristas de la red (líneas de transmisión).
+
+## Visualización avanzada
+
+El grafo puede exportarse a Gephi usando el método `exportar_gephi`.
+
+---
+
+¡Modifica los archivos CSV para probar diferentes configuraciones de red!
