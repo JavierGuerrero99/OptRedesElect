@@ -95,37 +95,50 @@ class OptimizadorRedElectrica:
             print(f"Error al calcular MST: {str(e)}")
             return None
     
-    def calcular_flujo_costo_minimo(self, fuente='subestacion_1', sumidero='consumo_5'):
-        """Calcula el flujo de costo mínimo entre una fuente y un sumidero"""
+    def calcular_flujo_costo_minimo(self):
+        # Crear un grafo dirigido para flujo de costo mínimo
+        G = nx.DiGraph()
+
+        # Agregar nodos con demanda
+        total_demanda = 0
+        for nodo, data in self.G.nodes(data=True):
+            if data.get("tipo") == "cliente":
+                G.add_node(nodo, demand=data.get("demanda", 0))
+                total_demanda += data.get("demanda", 0)
+            elif data.get("tipo") == "subestacion":
+                G.add_node(nodo, demand=-data.get("potencia", 0))
+                total_demanda -= data.get("potencia", 0)
+            else:
+                G.add_node(nodo, demand=0)
+
+        # Verificar que la suma total de demandas sea cero
+        if total_demanda != 0:
+            print("❌ Error: La suma total de demandas no es cero.")
+            print(f"Total demanda: {total_demanda}")
+            return
+
+        # Agregar aristas con capacidad y peso
+        for u, v, data in self.G.edges(data=True):
+            distancia = data.get("distancia", 1)
+            G.add_edge(u, v, weight=distancia, capacity=100)
+            G.add_edge(v, u, weight=distancia, capacity=100)
+
+        # Crear una superfuente para alimentar todas las subestaciones si lo deseas
+        # (opcional, dependiendo del modelo)
+
         try:
-            # Usamos la resistencia como costo
-            flujo = nx.max_flow_min_cost(self.G, fuente, sumidero, weight='resistencia')
-            costo = nx.cost_of_flow(self.G, flujo, weight='resistencia')
-            
-            # Calcular pérdidas estimadas
-            perdidas = self.estimar_perdidas(self.G)
-            perdidas_optimizadas = self.estimar_perdidas(flujo)
-            
-            # Guardar resultados
-            self.resultados['FlujoMinimo'] = {
-                'flujo': flujo,
-                'costo': costo,
-                'perdidas_original': perdidas,
-                'perdidas_optimizadas': perdidas_optimizadas,
-                'reduccion_perdidas': (perdidas - perdidas_optimizadas) / perdidas * 100
-            }
-            
-            print("\nFlujo de Costo Mínimo:")
-            print(f"- Fuente: {fuente}, Sumidero: {sumidero}")
-            print(f"- Costo total: {costo:.2f}")
-            print(f"- Pérdidas originales estimadas: {perdidas:.2f} kW")
-            print(f"- Pérdidas optimizadas: {perdidas_optimizadas:.2f} kW")
-            print(f"- Reducción de pérdidas: {self.resultados['FlujoMinimo']['reduccion_perdidas']:.2f}%")
-            
-            return flujo
-        except Exception as e:
-            print(f"Error al calcular flujo mínimo: {str(e)}")
-            return None
+            flujo_costo, flujo_dict = nx.network_simplex(G)
+            print("✅ Flujo de costo mínimo:", flujo_costo)
+            for u in flujo_dict:
+                for v in flujo_dict[u]:
+                    if flujo_dict[u][v] > 0:
+                        print(f"{u} → {v}: {flujo_dict[u][v]}")
+        except nx.NetworkXUnfeasible:
+            print("❌ Error: No hay un flujo que satisfaga todas las demandas (red insuficiente o desequilibrada).")
+
+
+
+
     
     def estimar_perdidas(self, grafo):
         """Estima pérdidas por efecto Joule en la red (simplificado)"""
