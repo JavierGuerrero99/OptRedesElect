@@ -15,7 +15,7 @@ class OptimizadorRedElectrica:
             # Cargar nodos (subestaciones y puntos de consumo)
             df_nodos = pd.read_csv(archivo_nodos)
             for _, row in df_nodos.iterrows():
-                self.G.add_node(row['id'], tipo=row['tipo'], demanda=row['demanda'])
+                self.G.add_node(row['id'], tipo=row['tipo'], demanda=row.get('demanda', 0), potencia=row.get('potencia',0))
             
             # Cargar aristas (líneas de transmisión)
             df_aristas = pd.read_csv(archivo_aristas)
@@ -23,7 +23,8 @@ class OptimizadorRedElectrica:
                 self.G.add_edge(row['origen'], row['destino'], 
                               resistencia=row['resistencia'],
                               capacidad=row['capacidad'],
-                              longitud=row['longitud'])
+                              longitud=row['longitud'],
+                              distancia=row.get('distancia', row['longitud']))
             
             print(f"Red cargada con {self.G.number_of_nodes()} nodos y {self.G.number_of_edges()} aristas")
             return True
@@ -40,12 +41,12 @@ class OptimizadorRedElectrica:
         
         # Dibujar nodos por tipo
         tipos_nodos = set(nx.get_node_attributes(self.G, 'tipo').values())
-        colores = {'subestacion': 'red', 'consumo': 'blue'}
+        colores = {'subestacion': 'red', 'consumo': 'blue', 'cliente': 'blue'}
         
         for tipo in tipos_nodos:
             nodos = [nodo for nodo in self.G.nodes() if self.G.nodes[nodo]['tipo'] == tipo]
             nx.draw_networkx_nodes(self.G, pos, nodelist=nodos, 
-                                 node_color=colores[tipo], 
+                                 node_color=colores.get(tipo, 'gray'), 
                                  node_size=300, label=tipo)
         
         # Dibujar aristas con grosor según capacidad
@@ -96,13 +97,14 @@ class OptimizadorRedElectrica:
             return None
     
     def calcular_flujo_costo_minimo(self):
+        """Calcula flujo de costo mínimo en la red (simplificado)"""
         # Crear un grafo dirigido para flujo de costo mínimo
         G = nx.DiGraph()
 
         # Agregar nodos con demanda
         total_demanda = 0
         for nodo, data in self.G.nodes(data=True):
-            if data.get("tipo") == "cliente":
+            if data.get("tipo") == "cliente" or data.get("tipo") == "consumo":
                 G.add_node(nodo, demand=data.get("demanda", 0))
                 total_demanda += data.get("demanda", 0)
             elif data.get("tipo") == "subestacion":
@@ -112,19 +114,17 @@ class OptimizadorRedElectrica:
                 G.add_node(nodo, demand=0)
 
         # Verificar que la suma total de demandas sea cero
-        if total_demanda != 0:
+        if abs(total_demanda) > 1e-6:
             print("❌ Error: La suma total de demandas no es cero.")
             print(f"Total demanda: {total_demanda}")
-            return
+            return None
 
-        # Agregar aristas con capacidad y peso
+        # Agregar aristas con capacidad y peso (peso = distancia o longitud)
         for u, v, data in self.G.edges(data=True):
-            distancia = data.get("distancia", 1)
-            G.add_edge(u, v, weight=distancia, capacity=100)
-            G.add_edge(v, u, weight=distancia, capacity=100)
-
-        # Crear una superfuente para alimentar todas las subestaciones si lo deseas
-        # (opcional, dependiendo del modelo)
+            distancia = data.get("distancia", data.get("longitud", 1))
+            capacidad = data.get("capacidad", 100)
+            G.add_edge(u, v, weight=distancia, capacity=capacidad)
+            G.add_edge(v, u, weight=distancia, capacity=capacidad)
 
         try:
             flujo_costo, flujo_dict = nx.network_simplex(G)
@@ -133,12 +133,10 @@ class OptimizadorRedElectrica:
                 for v in flujo_dict[u]:
                     if flujo_dict[u][v] > 0:
                         print(f"{u} → {v}: {flujo_dict[u][v]}")
+            return flujo_costo, flujo_dict
         except nx.NetworkXUnfeasible:
             print("❌ Error: No hay un flujo que satisfaga todas las demandas (red insuficiente o desequilibrada).")
-
-
-
-
+            return None
     
     def estimar_perdidas(self, grafo):
         """Estima pérdidas por efecto Joule en la red (simplificado)"""
@@ -175,31 +173,41 @@ class OptimizadorRedElectrica:
         print(f"Grafo exportado a {archivo_salida} para visualización en Gephi")
 
 
+
 # Ejemplo de uso
 if __name__ == "__main__":
     optimizador = OptimizadorRedElectrica()
     
-    # Cargar datos de ejemplo (deberías reemplazar con tus archivos reales)
-    optimizador.cargar_datos('nodos_ejemplo.csv', 'aristas_ejemplo.csv')
-    
-    # Visualizar red original
-    optimizador.visualizar_red("Red de Distribución Original")
-    
-    # Aplicar algoritmos de optimización
-    mst = optimizador.calcular_arbol_expansion_minima()
-    flujo = optimizador.calcular_flujo_costo_minimo()
-    
-    # Analizar conectividad
-    conectividad = optimizador.analizar_conectividad()
-    print("\nAnálisis de Conectividad:")
-    for k, v in conectividad.items():
-        print(f"- {k}: {v}")
-    
-    # Exportar para visualización avanzada
-    optimizador.exportar_gephi()
-    
-    # Visualizar red optimizada (MST)
-    if mst:
-        nx.draw(mst, with_labels=True, node_color='lightgreen')
-        plt.title("Árbol de Expansión Mínima")
-        plt.show()
+    # Cargar datos de ejemplo (reemplaza con tus archivos CSV)
+    if optimizador.cargar_datos('nodos_ejemplo.csv', 'aristas_ejemplo.csv'):
+        
+        # Visualizar red original
+        optimizador.visualizar_red("Red de Distribución Original")
+        
+        # Aplicar algoritmo MST para optimización
+        mst = optimizador.calcular_arbol_expansion_minima()
+        
+        # Visualizar red optimizada (MST)
+        if mst:
+            plt.figure(figsize=(10,7))
+            pos = nx.spring_layout(mst, seed=42)
+            nx.draw(mst, pos, with_labels=True, node_color='lightgreen', edge_color='gray', node_size=350)
+            plt.title("Árbol de Expansión Mínima")
+            plt.axis('off')
+            plt.show()
+            
+            # Estimar pérdidas en red optimizada
+            perdidas = optimizador.estimar_perdidas(mst)
+            print(f"Pérdidas estimadas en red optimizada: {perdidas:.2f} W (simplificado)")
+        
+        # Calcular flujo de costo mínimo
+        optimizador.calcular_flujo_costo_minimo()
+        
+        # Analizar conectividad
+        conectividad = optimizador.analizar_conectividad()
+        print("\nAnálisis de Conectividad:")
+        for k, v in conectividad.items():
+            print(f"- {k}: {v}")
+        
+        # Exportar para visualización avanzada en Gephi
+        optimizador.exportar_gephi()
